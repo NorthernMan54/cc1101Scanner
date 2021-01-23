@@ -14,7 +14,7 @@ void setup()
   Serial.begin(115200);
   ELECHOUSE_cc1101.Init();
   ELECHOUSE_cc1101.setRxBW(58);
-  ELECHOUSE_cc1101.SetRx();
+  ELECHOUSE_cc1101.SetRx(freq);
   Serial.println("Frequency Scanner Ready");
 }
 
@@ -23,7 +23,10 @@ void loop()
   ELECHOUSE_cc1101.setMHZ(freq);
   rssi = ELECHOUSE_cc1101.getRssi();
 
-  if (rssi > -75)
+  // Serial.print( rssi);
+  // Serial.print( ",");
+
+  if (rssi > -200)
   {
     if (rssi > mark_rssi)
     {
@@ -36,6 +39,7 @@ void loop()
 
   if (freq > stop_freq)
   {
+    Serial.print(".");
     freq = start_freq;
 
     if (mark_rssi > -75)
@@ -45,6 +49,7 @@ void loop()
 
       if (fr == compare_freq)
       {
+        Serial.println();
         Serial.print("Freq: ");
         Serial.println(mark_freq);
         Serial.print("Rssi: ");
