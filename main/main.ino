@@ -1,11 +1,13 @@
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
 
-float start_freq = 303;
-float stop_freq = 305;
+float frequencies [] = {303.79, 315.026, 433.92 };
 
-float freq = start_freq;
-long compare_freq;
-float mark_freq;
+int start_freq = 0;
+int stop_freq = 2;
+
+int freq = start_freq;
+int compare_freq;
+int mark_freq;
 int rssi;
 int mark_rssi = -100;
 
@@ -14,13 +16,16 @@ void setup()
   Serial.begin(115200);
   ELECHOUSE_cc1101.Init();
   ELECHOUSE_cc1101.setRxBW(58);
-  ELECHOUSE_cc1101.SetRx(freq);
+  ELECHOUSE_cc1101.SetRx(frequencies[freq]);
   Serial.println("Frequency Scanner Ready");
 }
 
 void loop()
 {
-  ELECHOUSE_cc1101.setMHZ(freq);
+  ELECHOUSE_cc1101.SetRx(frequencies[freq]);
+  delay(2);
+  // Serial.print(ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE));
+  // Serial.print(",");
   rssi = ELECHOUSE_cc1101.getRssi();
 
   // Serial.print( rssi);
@@ -30,41 +35,29 @@ void loop()
   {
     if (rssi > mark_rssi)
     {
+      // Serial.print(".");
       mark_rssi = rssi;
       mark_freq = freq;
     }
   }
 
-  freq += 0.01;
+  freq += 1;
 
   if (freq > stop_freq)
   {
-    Serial.print(".");
+    // Serial.println();
     freq = start_freq;
 
-    if (mark_rssi > -75)
+    if (mark_rssi > -70)
     {
 
-      long fr = mark_freq * 100;
-
-      if (fr == compare_freq)
-      {
         Serial.println();
         Serial.print("Freq: ");
-        Serial.println(mark_freq);
+        Serial.println(frequencies[mark_freq]);
         Serial.print("Rssi: ");
         Serial.println(mark_rssi);
-        mark_rssi = -100;
-        compare_freq = 0;
-        mark_freq = 0;
-      }
-      else
-      {
-        compare_freq = mark_freq * 100;
-        freq = mark_freq - 0.10;
-        mark_freq = 0;
-        mark_rssi = -100;
-      }
+        mark_rssi=-200;
+  
     }
   }
 }
