@@ -1,7 +1,7 @@
 #include <ELECHOUSE_CC1101_SRC_DRV.h>
 
-float start_freq = 303;
-float stop_freq = 305;
+float start_freq = 303.79;
+float stop_freq = 303.79;
 
 float freq = start_freq;
 long compare_freq;
@@ -21,6 +21,7 @@ void setup()
 void loop()
 {
   ELECHOUSE_cc1101.setMHZ(freq);
+  delay(1);
   rssi = ELECHOUSE_cc1101.getRssi();
 
   // Serial.print( rssi);
@@ -39,7 +40,7 @@ void loop()
 
   if (freq > stop_freq)
   {
-    Serial.print(".");
+    // Serial.print(".");
     freq = start_freq;
 
     if (mark_rssi > -75)
