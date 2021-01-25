@@ -25,7 +25,17 @@ unsigned long receiveStart = millis();
 RCSwitch mySwitch = RCSwitch();
 ESPiLight rf(-1); // use -1 to disable transmitter
 
-#define SIGNAL_SIZE_UL_ULL uint64_t
+static inline void safeDelayMicroseconds(unsigned long duration)
+{
+
+    // if delay > 10 milliseconds, use yield() to avoid wdt reset
+    unsigned long start = micros();
+    while ((micros() - start) < duration)
+    {
+      yield();
+    }
+
+}
 
 void setup()
 {
@@ -36,15 +46,19 @@ void setup()
   ELECHOUSE_cc1101.SetRx(frequencies[freq]);
   pinMode(RF_EMITTER_GPIO, OUTPUT); 
   mySwitch.disableTransmit();
+  mySwitch.enableReceive(RF_RECEIVER_GPIO);  // Receiver on
+  mySwitch.disableReceive();
   Serial.println("Frequency Scanner Ready");
 }
 
 void loop()
 {
+
   if (!receiveMode)
   {
     ELECHOUSE_cc1101.SetRx(frequencies[freq]);
-    delay(2);
+    // Log.trace(F("Freq: %F" CR), frequencies[freq]);
+    safeDelayMicroseconds(2000);
     rssi = ELECHOUSE_cc1101.getRssi();
     // Serial.print(ELECHOUSE_cc1101.SpiReadStatus(CC1101_MARCSTATE));
     // Serial.print(",");
@@ -84,6 +98,7 @@ void loop()
         case 0: // RC Switch
         case 1: // RC Switch
           Log.notice(F("RC Switch Enabled: %d" CR), RF_RECEIVER_GPIO);
+          ELECHOUSE_cc1101.SetRx(frequencies[freq]);
           mySwitch.enableReceive(RF_RECEIVER_GPIO);
           receiveMode = true;
           receiveStart = millis() + 1600; // Max signal length
@@ -111,17 +126,21 @@ void loop()
     }
   }
 
+
   if (mySwitch.available())
   {
     Log.trace(F("RF Task running on core :%d" CR), xPortGetCoreID());
-    SIGNAL_SIZE_UL_ULL MQTTvalue = mySwitch.getReceivedValue();
-    Log.notice(F("value :%s" CR), (SIGNAL_SIZE_UL_ULL)MQTTvalue);
-    Log.notice(F("protocol :%d" CR), (int)mySwitch.getReceivedProtocol());
-    Log.notice(F("length :%d" CR), (int)mySwitch.getReceivedBitlength());
-    Log.notice(F("delay :%d" CR), (int)mySwitch.getReceivedDelay());
-    Log.notice(F("Freq :%d" CR), frequencies[mark_freq]);
+    // SIGNAL_SIZE_UL_ULL MQTTvalue = mySwitch.getReceivedValue();
+    Log.notice(F("value :" CR));
+       // Serial.println( mySwitch.getReceivedValue() );
+    Log.notice(F("protocol: %d" CR), (int)mySwitch.getReceivedProtocol());
+    Log.notice(F("length: %d" CR), (int)mySwitch.getReceivedBitlength());
+    Log.notice(F("delay: %d" CR), (int)mySwitch.getReceivedDelay());
+    Log.notice(F("Freq: %F" CR), frequencies[mark_freq]);
+        Serial.print("RSSI: ");
+    Serial.println(ELECHOUSE_cc1101.getRssi());
     mySwitch.resetAvailable();
-    mySwitch.disableReceive();
+    // mySwitch.disableReceive();
     receiveMode = false;
   }
 }
