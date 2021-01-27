@@ -30,6 +30,10 @@ bool receiveMode = false;
 unsigned long receiveEnd = millis();
 unsigned long loopTime = micros();
 
+#define RECEIVETIME 800 // # of millis to stay on frequency
+#define TURNONTIME 150 // # of micros to wait for receiver to turn and stabilze
+#define MINRSSI -70 // Minimum RRSI to indicate signal received
+
 RCSwitch rcSwitch = RCSwitch();
 ESPiLight piLight(-1); // use -1 to disable transmitter
 
@@ -82,7 +86,7 @@ void calibrate()
   {
     ELECHOUSE_cc1101.SetRx(frequencies[freq]);
     waitForRadioReady();
-    safeDelayMicroseconds(300);
+    safeDelayMicroseconds(TURNONTIME);
     FSCAL1[freq] = ELECHOUSE_cc1101.SpiReadStatus(CC1101_FSCAL1);
     FSCAL2[freq] = ELECHOUSE_cc1101.SpiReadStatus(CC1101_FSCAL2);
     FSCAL3[freq] = ELECHOUSE_cc1101.SpiReadStatus(CC1101_FSCAL3);
@@ -134,10 +138,10 @@ void loop()
 #endif
     ELECHOUSE_cc1101.SpiStrobe(CC1101_SRX);
     waitForRadioReady();
-    safeDelayMicroseconds(200);
+    safeDelayMicroseconds(TURNONTIME);
     rssi = ELECHOUSE_cc1101.getRssi();
 
-    if (rssi > -70)
+    if (rssi > MINRSSI)
     {
 
       Serial.println();
@@ -153,14 +157,14 @@ void loop()
         Log.notice(F("RC Switch Enabled: %d" CR), RF_RECEIVER_GPIO);
         rcSwitch.enableReceive(RF_RECEIVER_GPIO);
         receiveMode = true;
-        receiveEnd = millis() + 300; // Max signal length
+        receiveEnd = millis() + RECEIVETIME; // Max signal length
         break;
       case 2:
         Log.notice(F("PiLight Enabled: %d" CR), RF_RECEIVER_GPIO);
         piLight.enableReceiver();
         piLight.initReceiver(RF_RECEIVER_GPIO);
         receiveMode = true;
-        receiveEnd = millis() + 300; // Max signal length
+        receiveEnd = millis() + RECEIVETIME; // Max signal length
         break;
       default:
         Log.notice(F("Unhandled Frequency: %d %f" CR), freq, frequencies[freq]);
@@ -196,9 +200,9 @@ void loop()
   if (rcSwitch.available())
   {
     Log.notice(F("time: %d" CR), millis() / 1000);
-    Log.notice(F("value: %u" CR), (unsigned long)rcSwitch.getReceivedValue());
-    Log.notice(F("protocol: %d" CR), (int)rcSwitch.getReceivedProtocol());
-    Log.notice(F("length: %d" CR), (int)rcSwitch.getReceivedBitlength());
+    Log.notice(F("value: %u, protocol: %d, length: %d" CR), (unsigned long)rcSwitch.getReceivedValue(), (int)rcSwitch.getReceivedProtocol(), (int)rcSwitch.getReceivedBitlength());
+    // Log.notice(F("protocol: %d" CR), (int)rcSwitch.getReceivedProtocol());
+    // Log.notice(F("length: %d" CR), (int)rcSwitch.getReceivedBitlength());
     // Log.notice(F("delay: %d" CR), (int)rcSwitch.getReceivedDelay());
     // Log.notice(F("Freq: %F" CR), frequencies[freq]);
     Log.notice(F("RSSI: %d" CR), ELECHOUSE_cc1101.getRssi());
