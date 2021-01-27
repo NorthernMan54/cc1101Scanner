@@ -14,6 +14,10 @@ byte FSCAL1[3];
 byte FSCAL2[3];
 byte FSCAL3[3];
 
+byte FREQ0[3];
+byte FREQ1[3];
+byte FREQ2[3];
+
 int start_freq = 0;
 int stop_freq = 2;
 
@@ -24,6 +28,7 @@ int mark_rssi = -100;
 
 bool receiveMode = false;
 unsigned long receiveEnd = millis();
+unsigned long loopTime = micros();
 
 RCSwitch rcSwitch = RCSwitch();
 ESPiLight piLight(-1); // use -1 to disable transmitter
@@ -65,7 +70,7 @@ void pilightCallback(const String &protocol, const String &message, int status,
     Log.notice(F("value: %s" CR), (char *)message.c_str());
     Log.notice(F("protocol: %s" CR), (char *)protocol.c_str());
     Log.notice(F("length: %s" CR), (char *)deviceID.c_str());
-//     Log.notice(F("Freq: %F" CR), frequencies[freq]);
+    //     Log.notice(F("Freq: %F" CR), frequencies[freq]);
     Log.notice(F("RSSI: %d" CR), ELECHOUSE_cc1101.getRssi());
     Log.notice(F("Time: %d" CR), receiveEnd - millis());
   }
@@ -81,54 +86,11 @@ void calibrate()
     FSCAL1[freq] = ELECHOUSE_cc1101.SpiReadStatus(CC1101_FSCAL1);
     FSCAL2[freq] = ELECHOUSE_cc1101.SpiReadStatus(CC1101_FSCAL2);
     FSCAL3[freq] = ELECHOUSE_cc1101.SpiReadStatus(CC1101_FSCAL3);
-    Log.notice(F("Calibrated: %F" CR), frequencies[freq]);
-    Log.notice(F("FSCAL1: %d" CR), FSCAL1[freq]);
-    Log.notice(F("FSCAL2: %d" CR), FSCAL2[freq]);
-    Log.notice(F("FSCAL3: %d" CR), FSCAL3[freq]);
+    FREQ0[freq] = ELECHOUSE_cc1101.SpiReadStatus(CC1101_FREQ0);
+    FREQ1[freq] = ELECHOUSE_cc1101.SpiReadStatus(CC1101_FREQ1);
+    FREQ2[freq] = ELECHOUSE_cc1101.SpiReadStatus(CC1101_FREQ2);
+    Log.notice(F("Calibrated %F Mhz\tFREQ: %d, %d, %d\tFSCAL: %d, %d, %d" CR), frequencies[freq], FREQ0[freq], FREQ1[freq], FREQ2[freq], FSCAL1[freq], FSCAL2[freq], FSCAL3[freq]);
   }
-}
-
-void setMHZ(float mhz)
-{
-  byte freq2 = 0;
-  byte freq1 = 0;
-  byte freq0 = 0;
-
-  float MHz = mhz;
-
-  for (bool i = 0; i == 0;)
-  {
-    if (mhz >= 26)
-    {
-      mhz -= 26;
-      freq2 += 1;
-    }
-    else if (mhz >= 0.1015625)
-    {
-      mhz -= 0.1015625;
-      freq1 += 1;
-    }
-    else if (mhz >= 0.00039675)
-    {
-      mhz -= 0.00039675;
-      freq0 += 1;
-    }
-    else
-    {
-      i = 1;
-    }
-  }
-  if (freq0 > 255)
-  {
-    freq1 += 1;
-    freq0 -= 256;
-  }
-
-  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FREQ2, freq2);
-  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FREQ1, freq1);
-  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FREQ0, freq0);
-
-  // Calibrate();
 }
 
 void setup()
@@ -159,7 +121,11 @@ void loop()
     unsigned long start = micros();
 #ifdef HOPPING
     ELECHOUSE_cc1101.SpiStrobe(CC1101_SIDLE);
-    setMHZ(frequencies[freq]);
+    // setMHZ(frequencies[freq]);
+
+    ELECHOUSE_cc1101.SpiWriteReg(CC1101_FREQ2, FREQ2[freq]);
+    ELECHOUSE_cc1101.SpiWriteReg(CC1101_FREQ1, FREQ1[freq]);
+    ELECHOUSE_cc1101.SpiWriteReg(CC1101_FREQ0, FREQ0[freq]);
     ELECHOUSE_cc1101.SpiWriteReg(CC1101_FSCAL1, FSCAL1[freq]);
     ELECHOUSE_cc1101.SpiWriteReg(CC1101_FSCAL2, FSCAL2[freq]);
     ELECHOUSE_cc1101.SpiWriteReg(CC1101_FSCAL3, FSCAL3[freq]);
@@ -175,8 +141,10 @@ void loop()
     {
 
       Serial.println();
+      Log.notice(F("Tuning time: %d" CR), micros() - start);
+      Log.notice(F("Loop time: %d" CR), micros() - loopTime);
       Log.notice(F("Freq: %F" CR), frequencies[freq]);
-      Log.notice(F("RSSI: %d" CR), ELECHOUSE_cc1101.getRssi());
+      Log.notice(F("RSSI: %d" CR), rssi);
 
       switch (freq)
       {
@@ -222,7 +190,7 @@ void loop()
       piLight.disableReceiver();
     }
   }
-
+  loopTime = micros();
   piLight.loop();
 
   if (rcSwitch.available())
